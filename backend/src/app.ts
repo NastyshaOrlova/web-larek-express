@@ -1,9 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import productRoutes from './routes/productRoutes';
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 mongoose
   .connect('mongodb://127.0.0.1:27017/weblarek')
@@ -15,6 +17,8 @@ mongoose
     // eslint-disable-next-line no-console
     console.error('Ошибка подключения к MongoDB:', error);
   });
+
+app.use('/', productRoutes);
 
 app.get('/', (_req, res) => {
   res.send('ку');
