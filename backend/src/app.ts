@@ -1,7 +1,8 @@
-import express from 'express';
 import cors from 'cors';
+import express from 'express';
 import mongoose from 'mongoose';
 import path from 'path';
+import orderRoutes from './routes/orderRoutes';
 import productRoutes from './routes/productRoutes';
 
 const app = express();
@@ -22,6 +23,7 @@ mongoose
   });
 
 app.use('/', productRoutes);
+app.use('/', orderRoutes);
 
 app.get('/', (_req, res) => {
   res.send('ку');
