@@ -1,3 +1,4 @@
+import { errors } from 'celebrate';
 import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
@@ -26,6 +27,8 @@ mongoose
   });
 
 app.use(routes);
+
+app.use(errors());
 
 app.use(errorLogger);
 app.use(notFound);
