@@ -6,8 +6,7 @@ import config from './config';
 import errorHandler from './middlewares/error-handler';
 import { errorLogger, requestLogger } from './middlewares/logger';
 import notFound from './middlewares/not-found';
-import orderRoutes from './routes/orderRoutes';
-import productRoutes from './routes/productRoutes';
+import routes from './routes';
 
 const app = express();
 app.use(cors());
@@ -26,12 +25,7 @@ mongoose
     console.error('Ошибка подключения к MongoDB:', error);
   });
 
-app.use('/', productRoutes);
-app.use('/', orderRoutes);
-
-app.get('/', (_req, res) => {
-  res.send('ку');
-});
+app.use(routes);
 
 app.use(errorLogger);
 app.use(notFound);
