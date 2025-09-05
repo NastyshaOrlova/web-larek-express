@@ -5,27 +5,7 @@ import Product from '../models/Product';
 
 const createOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { payment, email, phone, address, total, items } = req.body;
-
-    if (!payment || !['card', 'online'].includes(payment)) {
-      return next(new BadRequestError('Неверный тип оплаты'));
-    }
-
-    if (!email || !email.includes('@')) {
-      return next(new BadRequestError('Неверный email'));
-    }
-
-    if (!phone) {
-      return next(new BadRequestError('Телефон обязателен'));
-    }
-
-    if (!address) {
-      return next(new BadRequestError('Адрес обязателен'));
-    }
-
-    if (!items || items.length === 0) {
-      return next(new BadRequestError('Товары не выбраны'));
-    }
+    const { total, items } = req.body;
 
     const products = await Product.find({ _id: { $in: items } });
 
