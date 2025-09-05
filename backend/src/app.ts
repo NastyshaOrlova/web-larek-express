@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
 import path from 'path';
+import config from './config';
 import errorHandler from './middlewares/error-handler';
 import { errorLogger, requestLogger } from './middlewares/logger';
 import notFound from './middlewares/not-found';
@@ -15,7 +16,7 @@ app.use(requestLogger);
 app.use(express.static(path.join(__dirname, '../public')));
 
 mongoose
-  .connect('mongodb://127.0.0.1:27017/weblarek')
+  .connect(config.DB_ADDRESS)
   .then(() => {
     // eslint-disable-next-line no-console
     console.log('Подключились к MongoDB');
@@ -36,9 +37,9 @@ app.use(errorLogger);
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(3000, () => {
+app.listen(config.PORT, () => {
   // eslint-disable-next-line no-console
-  console.log('Server is running on http://localhost:3000');
+  console.log(`Server is running on http://localhost:${config.PORT}`);
 });
 
 export default app;
