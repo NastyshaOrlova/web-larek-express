@@ -2,6 +2,8 @@ import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
 import path from 'path';
+import errorHandler from './middlewares/error-handler';
+import notFound from './middlewares/not-found';
 import orderRoutes from './routes/orderRoutes';
 import productRoutes from './routes/productRoutes';
 
@@ -28,6 +30,9 @@ app.use('/', orderRoutes);
 app.get('/', (_req, res) => {
   res.send('ку');
 });
+
+app.use(notFound);
+app.use(errorHandler);
 
 app.listen(3000, () => {
   // eslint-disable-next-line no-console

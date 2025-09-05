@@ -1,49 +1,47 @@
 import { faker } from '@faker-js/faker';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import BadRequestError from '../errors/bad-request-error';
 import Product from '../models/Product';
 
-const createOrder = async (req: Request, res: Response) => {
+const createOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { payment, email, phone, address, total, items } = req.body;
 
     if (!payment || !['card', 'online'].includes(payment)) {
-      return res.status(400).json({ error: 'Неверный тип оплаты' });
+      return next(new BadRequestError('Неверный тип оплаты'));
     }
 
     if (!email || !email.includes('@')) {
-      return res.status(400).json({ error: 'Неверный email' });
+      return next(new BadRequestError('Неверный email'));
     }
 
     if (!phone) {
-      return res.status(400).json({ error: 'Телефон обязателен' });
+      return next(new BadRequestError('Телефон обязателен'));
     }
 
     if (!address) {
-      return res.status(400).json({ error: 'Адрес обязателен' });
+      return next(new BadRequestError('Адрес обязателен'));
     }
 
     if (!items || items.length === 0) {
-      return res.status(400).json({ error: 'Товары не выбраны' });
+      return next(new BadRequestError('Товары не выбраны'));
     }
 
     const products = await Product.find({ _id: { $in: items } });
 
     if (products.length !== items.length) {
-      return res.status(400).json({ error: 'Некоторые товары не найдены' });
+      return next(new BadRequestError('Некоторые товары не найдены'));
     }
 
     const unavailableProducts = products.filter((p) => p.price === null);
     if (unavailableProducts.length > 0) {
-      return res.status(400).json({ error: 'Некоторые товары не продаются' });
+      return next(new BadRequestError('Некоторые товары не продаются'));
     }
 
-    const calculatedTotal = products.reduce(
-      (sum, product) => sum + (product.price || 0),
-      0,
-    );
+    const calculatedTotal = products.reduce((sum, product) => sum + (product.price || 0), 0);
 
     if (calculatedTotal !== total) {
-      return res.status(400).json({ error: 'Неверная сумма заказа' });
+      return next(new BadRequestError('Неверная сумма заказа'));
     }
 
     const orderId = faker.string.uuid();
@@ -53,7 +51,7 @@ const createOrder = async (req: Request, res: Response) => {
       total,
     });
   } catch (error) {
-    res.status(400).json({ error: 'Ошибка создания заказа' });
+    next(new BadRequestError('Ошибка создания заказа'));
   }
 };
 
