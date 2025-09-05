@@ -12,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, './public')));
 
 mongoose
   .connect(config.DB_ADDRESS)
