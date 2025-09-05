@@ -3,6 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import path from 'path';
 import errorHandler from './middlewares/error-handler';
+import { errorLogger, requestLogger } from './middlewares/logger';
 import notFound from './middlewares/not-found';
 import orderRoutes from './routes/orderRoutes';
 import productRoutes from './routes/productRoutes';
@@ -10,7 +11,7 @@ import productRoutes from './routes/productRoutes';
 const app = express();
 app.use(cors());
 app.use(express.json());
-
+app.use(requestLogger);
 app.use(express.static(path.join(__dirname, '../public')));
 
 mongoose
@@ -31,6 +32,7 @@ app.get('/', (_req, res) => {
   res.send('ку');
 });
 
+app.use(errorLogger);
 app.use(notFound);
 app.use(errorHandler);
 
