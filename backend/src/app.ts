@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
@@ -23,6 +24,7 @@ mongoose
     console.error('Ошибка подключения к MongoDB:', error);
   });
 
+app.use(cookieParser());
 app.use(routes);
 
 app.listen(3000, () => {
