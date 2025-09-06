@@ -1,8 +1,10 @@
+import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import ms from 'ms';
 import User from '../models/User';
 
-const getCurrentUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -31,4 +33,44 @@ const getCurrentUser = async (req: Request, res: Response) => {
   }
 };
 
-export default getCurrentUser;
+export const login = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Неверный email или пароль' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, message: 'Неверный email или пароль' });
+    }
+
+    const accessToken = jwt.sign({ _id: user._id }, 'ключ'!, { expiresIn: '10m' });
+
+    const refreshToken = jwt.sign({ _id: user._id }, 'ключ'!, { expiresIn: '7d' });
+
+    user.tokens.push({ token: refreshToken });
+    await user.save();
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      maxAge: ms('7d'),
+      path: '/',
+    });
+
+    return res.json({
+      user: {
+        email: user.email,
+        name: user.name,
+      },
+      success: true,
+      accessToken,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Ошибка сервера' });
+  }
+};
