@@ -130,3 +130,41 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: 'Ошибка сервера' });
   }
 };
+
+export const logout = async (req: Request, res: Response) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({ success: false, message: 'Токен не предоставлен' });
+    }
+
+    const decoded = jwt.verify(refreshToken, 'ключ') as { _id: string };
+
+    if (!decoded._id) {
+      return res.status(400).json({ success: false, message: 'Невалидный _id в токене' });
+    }
+
+    const user = await User.findById(decoded._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Пользователь не найден' });
+    }
+
+    user.tokens = user.tokens.filter((t) => t.token !== refreshToken);
+    await user.save();
+
+    res.cookie('refreshToken', '', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      maxAge: 0,
+      path: '/',
+    });
+
+    return res.json({
+      success: true,
+    });
+  } catch (error) {
+    return res.status(401).json({ success: false, message: 'Невалидный токен' });
+  }
+};
