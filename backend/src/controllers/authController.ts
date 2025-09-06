@@ -33,6 +33,62 @@ export const getCurrentUser = async (req: Request, res: Response) => {
   }
 };
 
+export const register = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email и пароль обязательны' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Пароль должен быть от 6 символов' });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ success: false, message: 'Пользователь с таким email уже существует' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      name: 'Ё-мое',
+      email,
+      password: hashedPassword,
+      tokens: [],
+    });
+
+    await user.save();
+
+    const accessToken = jwt.sign({ _id: user._id }, 'ключ', { expiresIn: '10m' });
+
+    const refreshToken = jwt.sign({ _id: user._id }, 'ключ', { expiresIn: '7d' });
+
+    user.tokens.push({ token: refreshToken });
+    await user.save();
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      maxAge: ms('7d'),
+      path: '/',
+    });
+
+    return res.json({
+      user: {
+        email: user.email,
+        name: user.name,
+      },
+      success: true,
+      accessToken,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Ошибка сервера' });
+  }
+};
+
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
