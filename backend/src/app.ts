@@ -3,6 +3,8 @@ import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
 import path from 'path';
+import errorHandler from './middlewares/error-handler';
+import notFound from './middlewares/not-found';
 import routes from './routes';
 import startCleanupScheduler from './utils/cleanup';
 
@@ -31,6 +33,9 @@ app.use(cookieParser());
 app.use('/images', express.static(path.join(__dirname, '../uploads/products')));
 
 app.use(routes);
+
+app.use(notFound);
+app.use(errorHandler);
 
 app.listen(3000, () => {
   // eslint-disable-next-line no-console
