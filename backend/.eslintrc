@@ -45,6 +45,7 @@
         "caughtErrorsIgnorePattern": "^_"
       }
     ],
-    "object-curly-newline": "off"
+    "object-curly-newline": "off",
+    "import/no-unresolved": "off"
   }
 }
