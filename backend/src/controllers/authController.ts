@@ -93,7 +93,7 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+password +tokens');
     if (!user) {
       return res.status(401).json({ success: false, message: 'Неверный email или пароль' });
     }
@@ -141,7 +141,7 @@ export const logout = async (req: Request, res: Response) => {
 
     const decoded = jwt.verify(refreshToken, 'ключ') as { _id: string };
 
-    const user = await User.findById(decoded._id);
+    const user = await User.findById(decoded._id).select('+tokens');
     if (!user) {
       return res.status(404).json({ success: false, message: 'Пользователь не найден' });
     }
@@ -175,7 +175,7 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
 
     const decoded = jwt.verify(refreshToken, 'ключ') as { _id: string };
 
-    const user = await User.findById(decoded._id);
+    const user = await User.findById(decoded._id).select('+tokens');
     if (!user) {
       return res.status(401).json({ success: false, message: 'Пользователь не найден' });
     }
