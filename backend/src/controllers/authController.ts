@@ -141,10 +141,6 @@ export const logout = async (req: Request, res: Response) => {
 
     const decoded = jwt.verify(refreshToken, 'ключ') as { _id: string };
 
-    if (!decoded._id) {
-      return res.status(400).json({ success: false, message: 'Невалидный _id в токене' });
-    }
-
     const user = await User.findById(decoded._id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'Пользователь не найден' });
@@ -166,5 +162,54 @@ export const logout = async (req: Request, res: Response) => {
     });
   } catch (error) {
     return res.status(401).json({ success: false, message: 'Невалидный токен' });
+  }
+};
+
+export const refreshAccessToken = async (req: Request, res: Response) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({ success: false, message: 'Refresh токен не предоставлен' });
+    }
+
+    const decoded = jwt.verify(refreshToken, 'ключ') as { _id: string };
+
+    const user = await User.findById(decoded._id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Пользователь не найден' });
+    }
+
+    const tokenExists = user.tokens.some((t) => t.token === refreshToken);
+    if (!tokenExists) {
+      return res.status(401).json({ success: false, message: 'Невалидный refresh токен' });
+    }
+
+    user.tokens = user.tokens.filter((t) => t.token !== refreshToken);
+
+    const newAccessToken = jwt.sign({ _id: user._id }, 'ключ', { expiresIn: '10m' });
+    const newRefreshToken = jwt.sign({ _id: user._id }, 'ключ', { expiresIn: '7d' });
+
+    user.tokens.push({ token: newRefreshToken });
+    await user.save();
+
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      maxAge: ms('7d'),
+      path: '/',
+    });
+
+    return res.json({
+      user: {
+        email: user.email,
+        name: user.name,
+      },
+      success: true,
+      accessToken: newAccessToken,
+    });
+  } catch (error) {
+    return res.status(401).json({ success: false, message: 'Невалидный или просроченный refresh токен' });
   }
 };
