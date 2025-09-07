@@ -94,3 +94,22 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { productId } = req.params;
+    const deletedProduct = await Product.findByIdAndDelete(productId);
+
+    if (!deletedProduct) {
+      next(new NotFoundError('Товар не найден'));
+      return;
+    }
+
+    res.json(deletedProduct);
+  } catch (error) {
+    if (error instanceof MongooseError.CastError) {
+      next(new BadRequestError('Неверный формат ID товара'));
+    }
+    next(error);
+  }
+};
