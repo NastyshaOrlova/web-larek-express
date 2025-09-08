@@ -44,6 +44,9 @@
         "varsIgnorePattern": "^_",
         "caughtErrorsIgnorePattern": "^_"
       }
-    ]
+    ],
+    "consistent-return": "off",
+    "function-paren-newline": "off",
+    "object-curly-newline": "off"
   }
 }
