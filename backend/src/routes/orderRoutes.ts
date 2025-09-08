@@ -5,6 +5,6 @@ import { createOrderSchema } from '../validation/schemas';
 
 const router = express.Router();
 
-router.post('/order', celebrate(createOrderSchema), createOrder);
+router.post('/', celebrate(createOrderSchema), createOrder);
 
 export default router;

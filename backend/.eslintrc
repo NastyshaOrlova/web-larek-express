@@ -19,6 +19,12 @@
     "import/extensions": [".js", ".ts"]
   },
   "rules": {
+    "import/no-unresolved": [
+      "error",
+      {
+        "ignore": ["^uuid$", "^multer$", "^jsonwebtoken$", "^bcrypt$"]
+      }
+    ],
     "no-shadow": "off",
     "@typescript-eslint/no-shadow": "warn",
     "import/extensions": [

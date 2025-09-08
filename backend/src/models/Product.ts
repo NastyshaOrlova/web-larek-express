@@ -1,4 +1,6 @@
+import fs from 'fs';
 import mongoose, { Document, Schema } from 'mongoose';
+import path from 'path';
 
 export interface IProduct extends Document {
   title: string;
@@ -42,6 +44,18 @@ const productSchema = new Schema<IProduct>({
     required: false,
     default: null,
   },
+});
+
+// eslint-disable-next-line prefer-arrow-callback
+productSchema.post('deleteOne', function deleteProductFile(doc: IProduct) {
+  if (doc && doc.image && doc.image.fileName) {
+    const fileName: string = path.basename(doc.image.fileName);
+    const filePath: string = path.join('uploads/products', fileName);
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
 });
 
 export default mongoose.model<IProduct>('product', productSchema);
