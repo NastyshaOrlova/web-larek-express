@@ -1,12 +1,10 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import BadRequestError from '../errors/bad-request-error';
 
-const uploadFile = (req: Request, res: Response) => {
+const uploadFile = (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'Файл не был загружен',
-      });
+      return next(new BadRequestError('Файл не был загружен'));
     }
 
     return res.json({
@@ -14,10 +12,7 @@ const uploadFile = (req: Request, res: Response) => {
       originalName: req.file.originalname,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Ошибка при загрузке файла',
-    });
+    next(error);
   }
 };
 

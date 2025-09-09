@@ -1,24 +1,27 @@
 import bcrypt from 'bcrypt';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { Error as MongooseError } from 'mongoose';
 import ms from 'ms';
+import BadRequestError from '../errors/bad-request-error';
+import ConflictError from '../errors/conflict-error';
+import NotFoundError from '../errors/not-found-error';
+import UnauthorizedError from '../errors/unauthorized';
 import User from '../models/User';
 
-export const getCurrentUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: 'Токен не предоставлен' });
+      return next(new UnauthorizedError('Токен не предоставлен'));
     }
 
     const token = authHeader.split(' ')[1];
-
     const decoded = jwt.verify(token, 'ключ'!) as { _id: string };
-
     const user = await User.findById(decoded._id).select('-password -tokens');
 
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Пользователь не найден' });
+      return next(new NotFoundError('Пользователь не найден'));
     }
 
     return res.json({
@@ -29,25 +32,20 @@ export const getCurrentUser = async (req: Request, res: Response) => {
       success: true,
     });
   } catch (error) {
-    return res.status(401).json({ success: false, message: 'Невалидный токен' });
+    if (error instanceof jwt.JsonWebTokenError) {
+      return next(new UnauthorizedError('Невалидный токен'));
+    }
+    next(error);
   }
 };
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email и пароль обязательны' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Пароль должен быть от 6 символов' });
-    }
-
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ success: false, message: 'Пользователь с таким email уже существует' });
+      return next(new ConflictError('Пользователь с таким email уже существует'));
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -62,7 +60,6 @@ export const register = async (req: Request, res: Response) => {
     await user.save();
 
     const accessToken = jwt.sign({ _id: user._id }, 'ключ', { expiresIn: '10m' });
-
     const refreshToken = jwt.sign({ _id: user._id }, 'ключ', { expiresIn: '7d' });
 
     user.tokens.push({ token: refreshToken });
@@ -85,26 +82,33 @@ export const register = async (req: Request, res: Response) => {
       accessToken,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Ошибка сервера' });
+    if (error instanceof MongooseError.ValidationError) {
+      return next(new BadRequestError('Ошибка валидации данных пользователя'));
+    }
+
+    if (error instanceof Error && error.message.includes('E11000')) {
+      return next(new ConflictError('Пользователь с таким email уже существует'));
+    }
+
+    next(error);
   }
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email }).select('+password +tokens');
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Неверный email или пароль' });
+      return next(new UnauthorizedError('Неверный email или пароль'));
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ success: false, message: 'Неверный email или пароль' });
+      return next(new UnauthorizedError('Неверный email или пароль'));
     }
 
     const accessToken = jwt.sign({ _id: user._id }, 'ключ'!, { expiresIn: '10m' });
-
     const refreshToken = jwt.sign({ _id: user._id }, 'ключ'!, { expiresIn: '7d' });
 
     user.tokens.push({ token: refreshToken });
@@ -127,23 +131,23 @@ export const login = async (req: Request, res: Response) => {
       accessToken,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Ошибка сервера' });
+    next(error);
   }
 };
 
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
-      return res.status(401).json({ success: false, message: 'Токен не предоставлен' });
+      return next(new UnauthorizedError('Токен не предоставлен'));
     }
 
     const decoded = jwt.verify(refreshToken, 'ключ') as { _id: string };
-
     const user = await User.findById(decoded._id).select('+tokens');
+
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Пользователь не найден' });
+      return next(new NotFoundError('Пользователь не найден'));
     }
 
     user.tokens = user.tokens.filter((t) => t.token !== refreshToken);
@@ -161,28 +165,31 @@ export const logout = async (req: Request, res: Response) => {
       success: true,
     });
   } catch (error) {
-    return res.status(401).json({ success: false, message: 'Невалидный токен' });
+    if (error instanceof jwt.JsonWebTokenError) {
+      return next(new UnauthorizedError('Невалидный токен'));
+    }
+    next(error);
   }
 };
 
-export const refreshAccessToken = async (req: Request, res: Response) => {
+export const refreshAccessToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
-      return res.status(401).json({ success: false, message: 'Refresh токен не предоставлен' });
+      return next(new UnauthorizedError('Refresh токен не предоставлен'));
     }
 
     const decoded = jwt.verify(refreshToken, 'ключ') as { _id: string };
-
     const user = await User.findById(decoded._id).select('+tokens');
+
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Пользователь не найден' });
+      return next(new NotFoundError('Пользователь не найден'));
     }
 
     const tokenExists = user.tokens.some((t) => t.token === refreshToken);
     if (!tokenExists) {
-      return res.status(401).json({ success: false, message: 'Невалидный refresh токен' });
+      return next(new UnauthorizedError('Невалидный refresh токен'));
     }
 
     user.tokens = user.tokens.filter((t) => t.token !== refreshToken);
@@ -210,6 +217,9 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
       accessToken: newAccessToken,
     });
   } catch (error) {
-    return res.status(401).json({ success: false, message: 'Невалидный или просроченный refresh токен' });
+    if (error instanceof jwt.JsonWebTokenError) {
+      return next(new UnauthorizedError('Невалидный или просроченный refresh токен'));
+    }
+    next(error);
   }
 };

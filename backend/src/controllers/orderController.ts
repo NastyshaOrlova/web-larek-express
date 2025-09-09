@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { NextFunction, Request, Response } from 'express';
+import { Error as MongooseError } from 'mongoose';
 import BadRequestError from '../errors/bad-request-error';
 import Product from '../models/Product';
 
@@ -31,7 +32,10 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       total,
     });
   } catch (error) {
-    next(new BadRequestError('Ошибка создания заказа'));
+    if (error instanceof MongooseError.CastError) {
+      return next(new BadRequestError('Неверный формат ID товара'));
+    }
+    next(error);
   }
 };
 
